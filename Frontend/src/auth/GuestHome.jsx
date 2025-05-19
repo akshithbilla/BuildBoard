@@ -17,7 +17,8 @@ import folder from "../pages/folder.png";
 import profile from "../pages/profile.png";
 import credentials from "../pages/credentials.png";
 import digital from "../pages/digital.png";
-import screenshot from "../pages/screenshot.png"; // Add a screenshot of your app
+import screenshot from '../pages/screenshot.png';
+
 import logo from "../pages/logo.png"; // Your logo
 
 export default function Guest() {
