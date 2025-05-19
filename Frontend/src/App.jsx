@@ -6,10 +6,7 @@ import VerifyEmailPage from "./auth/VerifyEmailPage";
 import ForgotPasswordPage from "./auth/ForgotPasswordPage";
 import ResetPasswordPage from "./auth/ResetPasswordPage";
 import IndexPage from "./pages/index";
-// import Myvault from "./pages/myvault";
-// import PricingPage from "@/pages/pricing";
-// import EncryptSave from "@/pages/EncryptSave";
-// import AboutPage from "@/pages/about";
+
 import PublicProfilePage from "./pages/PublicProfilePage";
 import { Navbar } from "./components/navbar";
 import LoginPage from "./auth/LoginPage";
