@@ -11,7 +11,7 @@ import PublicProfilePage from "./pages/PublicProfilePage";
 import { Navbar } from "./components/navbar";
 import LoginPage from "./auth/LoginPage";
 import SignupPage from "./auth/SignupPage";
-import PageNotFound from "./config/pagenotfound";
+//import PageNotFound from "./config/pagenotfound";
 import ProtectedRoute from "./components/Layout/ProtectedRoute.tsx";
 import PublicOnlyRoute from "./components/Layout/PublicOnlyRoute";
 
@@ -97,7 +97,7 @@ function App() {
           }
         />
         <Route path="/:username" element={<PublicProfilePage />} />
-        <Route path="*" element={<PageNotFound />} />
+       {/* *<Route path="*" element={<PageNotFound />} /> */}
       </Routes>
     </>
   );
