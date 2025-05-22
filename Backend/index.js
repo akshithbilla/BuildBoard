@@ -21,7 +21,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware ---------------------------------------------------------------------
-const cors = require('cors');
+ 
+
+// Already imported at the top:
+// import cors from 'cors';
 
 const allowedOrigins = [
   'https://myportfolify.vercel.app',
@@ -39,11 +42,13 @@ const corsOptions = {
   },
   credentials: true,
   exposedHeaders: ['set-cookie'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow preflight methods
-  allowedHeaders: ['Content-Type', 'Authorization'] // Adjust if you're sending custom headers
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // This helps handle preflight requests
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
