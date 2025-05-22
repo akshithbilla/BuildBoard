@@ -38,123 +38,94 @@ export default function IndexPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-const fetchProfile = async () => {
-  try {
-    setIsLoading(true);
-    setError(null);
-    
-    const res = await fetch('/api/profiles/me', {
-      credentials: 'include'
-    });
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await fetch('/api/profiles/me', {
+          credentials: 'include'
+        });
+        
+        if (!res.ok) {
+          if (res.status === 404) {
+            // No profile exists - show setup form
+            setActiveTab('setup');
+            return;
+          }
+          throw new Error('Failed to fetch profile');
+        }
 
-    // First check if response is JSON
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await res.text();
-      console.error('Received non-JSON response:', text.slice(0, 100));
-      throw new Error('Server returned an unexpected response');
-    }
+        const data = await res.json();
+        setProfile({
+          ...defaultProfile,
+          ...data,
+          projects: Array.isArray(data.projects) ? data.projects : [],
+          stats: {
+            totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
+          }
+        });
 
-    const data = await res.json();
-    
-    if (!res.ok) {
-      if (res.status === 401) {
-        // Not authenticated
-        setActiveTab('setup');
-        return;
+      } catch (err) {
+        console.error('Profile fetch error:', err);
+        setError(err.message);
+        setActiveTab('setup'); // Fallback to setup if there's any error
+      } finally {
+        setIsLoading(false);
       }
-      if (res.status === 404) {
-        // No profile exists
-        setActiveTab('setup');
-        return;
-      }
-      throw new Error(data.message || 'Failed to fetch profile');
-    }
-
-    setProfile({
-      ...defaultProfile,
-      ...data,
-      projects: Array.isArray(data.projects) ? data.projects : [],
-      stats: {
-        totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
-      }
-    });
-
-  } catch (err) {
-    console.error('Profile fetch error:', err);
-    setError(err.message);
-    setActiveTab('setup');
-  } finally {
-    setIsLoading(false);
-  }
-};
+    };
 
     fetchProfile();
   }, []);
 
-const handleCreateProfile = async (username) => {
-  try {
-    setIsLoading(true);
-    setError(null);
-    
-    // First check authentication
-    const authCheck = await fetch('/api/check-auth', {
-      credentials: 'include'
-    });
-    
-    if (!authCheck.ok) {
-      throw new Error('Please login before creating a profile');
-    }
-
-    // Then check username availability
-    const checkRes = await fetch(`/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
-      credentials: 'include'
-    });
-    
-    if (!checkRes.ok) {
-      throw new Error('Failed to check username availability');
-    }
-    
-    const checkData = await checkRes.json();
-    if (checkData.exists) {
-      throw new Error('Username already exists. Please try another one.');
-    }
-    
-    // Create profile
-    const res = await fetch('/api/profiles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username }),
-      credentials: 'include'
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      try {
-        const errorData = JSON.parse(errorText);
+  const handleCreateProfile = async (username) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // First check if username exists
+      const checkRes = await fetch(`/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
+        credentials: 'include'
+      });
+      
+      if (!checkRes.ok) {
+        throw new Error('Failed to check username availability');
+      }
+      
+      const checkData = await checkRes.json();
+      if (checkData.exists) {
+        throw new Error('Username already exists. Please try another one.');
+      }
+      
+      // If username is available, create profile
+      const res = await fetch('/api/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to create profile');
-      } catch {
-        throw new Error(errorText || 'Failed to create profile');
       }
-    }
 
-    const data = await res.json();
-    setProfile({
-      ...defaultProfile,
-      ...data,
-      projects: Array.isArray(data.projects) ? data.projects : [],
-      stats: {
-        totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
-      }
-    });
-    setActiveTab('projects');
-  } catch (err) {
-    console.error('Profile creation error:', err);
-    setError(err.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      const data = await res.json();
+      setProfile({
+        ...defaultProfile,
+        ...data,
+        projects: Array.isArray(data.projects) ? data.projects : [],
+        stats: {
+          totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
+        }
+      });
+      setActiveTab('projects');
+    } catch (err) {
+      console.error('Profile creation error:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGenerateSite = async () => {
     try {
