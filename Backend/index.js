@@ -21,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware ---------------------------------------------------------------------
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: "https://myportfolify.vercel.app/", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -127,7 +127,7 @@ passport.use(new LocalStrategy({ usernameField: "username" }, async (username, p
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "http://localhost:3000/auth/google/callback",
+  callbackURL: "https://myportfolify.onrender.com/auth/google/callback",
   passReqToCallback: true,
 }, async (req, accessToken, refreshToken, profile, done) => {
   try {
