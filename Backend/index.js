@@ -127,7 +127,7 @@ passport.use(new LocalStrategy({ usernameField: "username" }, async (username, p
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "https://myportfolify.onrender.com/auth/google/callback",
+  callbackURL: "http://localhost:3000/auth/google/callback",
   passReqToCallback: true,
 }, async (req, accessToken, refreshToken, profile, done) => {
   try {
