@@ -21,19 +21,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware ---------------------------------------------------------------------
- 
-
-// Already imported at the top:
-// import cors from 'cors';
-
+// Allow both production and development origins
 const allowedOrigins = [
   'https://myportfolify.vercel.app',
-  'http://localhost:5173'
+  'http://localhost:3000' // Add your frontend dev URL
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Allow mobile apps or curl
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -41,18 +39,13 @@ const corsOptions = {
     }
   },
   credentials: true,
-  exposedHeaders: ['set-cookie'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // This helps handle preflight requests
-
+  exposedHeaders: ['set-cookie'] // Important for cross-origin cookies
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -155,7 +148,7 @@ passport.use(new LocalStrategy({ usernameField: "username" }, async (username, p
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "http://localhost:3000/auth/google/callback",
+  callbackURL: "https://myportfolify.onrender.com/auth/google/callback",
   passReqToCallback: true,
 }, async (req, accessToken, refreshToken, profile, done) => {
   try {
@@ -183,11 +176,11 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-
-// Routes -------------------------------------------------------------------------
 app.get('/', (req, res) => {
   res.send('Server Working!');
 });
+// Routes -------------------------------------------------------------------------
+
 // Authentication Routes (unchanged) ----------------------------------------------
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
@@ -460,26 +453,38 @@ app.post('/api/profiles', async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok',
-    time: new Date().toISOString()
-  });
-});
+
 // Get current user's profile
 app.get('/api/profiles/me', async (req, res) => {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ message: "Not authenticated" });
+    return res.status(401).json({ 
+      message: "Not authenticated",
+      authenticated: false 
+    });
   }
 
   try {
     const profile = await Project.findOne({ userId: req.user._id });
+    
     if (!profile) {
-      return res.status(404).json({ message: "Profile not found" });
+      return res.status(404).json({ 
+        message: "Profile not found",
+        profileExists: false 
+      });
     }
-    res.json(profile);
+    
+    res.json({
+      ...profile.toObject(),
+      authenticated: true,
+      profileExists: true
+    });
+    
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Profile fetch error:", err);
+    res.status(500).json({ 
+      message: "Server error",
+      error: err.message 
+    });
   }
 });
 
