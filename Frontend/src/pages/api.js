@@ -1,11 +1,10 @@
-// Create an api.js utility file for centralized API calls
 const API_BASE_URL = "https://myportfolify.onrender.com";
 
 // Helper function to handle API requests
-async function apiRequest(endpoint, method = 'GET', body = null, headers = {}) {
+async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, retries = 1) {
   const config = {
     method,
-    credentials: 'include', // Important for cookies/sessions
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...headers
@@ -19,18 +18,46 @@ async function apiRequest(endpoint, method = 'GET', body = null, headers = {}) {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    const isJson = contentType && contentType.includes('application/json');
+    
     if (!response.ok) {
       // Handle 401 specifically to trigger reauthentication
       if (response.status === 401) {
-        throw new Error('Authentication required');
+        // Clear any invalid auth state
+        localStorage.removeItem('authToken');
+        throw new Error('Session expired. Please login again.');
       }
-      const errorData = await response.json().catch(() => ({}));
+      
+      // Try to get error message from response
+      const errorData = isJson ? await response.json() : { 
+        message: await response.text() || `Request failed with status ${response.status}`
+      };
       throw new Error(errorData.message || `Request failed with status ${response.status}`);
+    }
+
+    // Verify we have JSON before parsing
+    if (!isJson) {
+      const text = await response.text();
+      if (text.startsWith('<!DOCTYPE html>')) {
+        throw new Error('Received HTML response instead of JSON');
+      }
+      throw new Error('Invalid response format from server');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('API request failed:', error);
+    console.error(`API request to ${endpoint} failed:`, error);
+    
+    // Retry logic for certain errors
+    if (retries > 0 && 
+        (error.message.includes('Network Error') || 
+         error.message.includes('Failed to fetch'))) {
+      console.log(`Retrying request to ${endpoint}...`);
+      return apiRequest(endpoint, method, body, headers, retries - 1);
+    }
+    
     throw error;
   }
 }
@@ -42,16 +69,26 @@ export const authService = {
       const data = await apiRequest('/check-auth');
       return { authenticated: true, user: data.user };
     } catch (error) {
-      return { authenticated: false, error: error.message };
+      return { 
+        authenticated: false, 
+        error: error.message,
+        requiresLogin: error.message.includes('Session expired') 
+      };
     }
   },
 
   async login(email, password) {
-    return apiRequest('/login', 'POST', { username: email, password });
+    const data = await apiRequest('/login', 'POST', { username: email, password });
+    // Store token if your backend uses JWT
+    if (data.token) {
+      localStorage.setItem('authToken', data.token);
+    }
+    return data;
   },
 
   async logout() {
-    return apiRequest('/logout', 'GET');
+    localStorage.removeItem('authToken');
+    return apiRequest('/logout', 'POST');
   },
 
   async register(email, password) {
@@ -65,12 +102,16 @@ export const profileService = {
     return apiRequest('/api/profiles/me');
   },
 
+  async checkUsername(username) {
+    return apiRequest(`/api/profiles/check-username?username=${encodeURIComponent(username)}`);
+  },
+
   async createProfile(username) {
     return apiRequest('/api/profiles', 'POST', { username });
   },
 
   async updateProfile(profileData) {
-    return apiRequest('/api/profiles/me/profile', 'PUT', { profile: profileData });
+    return apiRequest('/api/profiles/me', 'PUT', profileData);
   },
 
   async updateTemplate(template) {
@@ -81,8 +122,12 @@ export const profileService = {
 // Project-related functions
 export const projectService = {
   async getProjects() {
-    const profile = await apiRequest('/api/profiles/me');
-    return profile.projects || [];
+    const data = await apiRequest('/api/profiles/me/projects');
+    return data.projects || [];
+  },
+
+  async getProject(projectId) {
+    return apiRequest(`/api/profiles/me/projects/${projectId}`);
   },
 
   async addProject(projectData) {
