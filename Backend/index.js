@@ -21,16 +21,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware ---------------------------------------------------------------------
+const cors = require('cors');
+
 const allowedOrigins = [
   'https://myportfolify.vercel.app',
-  'http://localhost:5173' // Add your frontend dev URL
+  'http://localhost:5173'
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
+    if (!origin) return callback(null, true); // Allow mobile apps or curl
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -38,8 +38,13 @@ app.use(cors({
     }
   },
   credentials: true,
-  exposedHeaders: ['set-cookie'] // Important for cross-origin cookies
-}));
+  exposedHeaders: ['set-cookie'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow preflight methods
+  allowedHeaders: ['Content-Type', 'Authorization'] // Adjust if you're sending custom headers
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
