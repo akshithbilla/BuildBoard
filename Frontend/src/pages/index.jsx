@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService, profileService, projectService } from '@/services/api';
 import DefaultLayout from "@/layouts/default";
 import ProjectForm from '../dashboard/ProjectForm';
 import ProjectList from '../dashboard/ProjectList';
@@ -37,85 +38,73 @@ export default function IndexPage() {
   const [siteGenerated, setSiteGenerated] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
+    useEffect(() => {
+    const checkAuthAndFetchProfile = async () => {
       try {
         setIsLoading(true);
-        setError(null);
-        const res = await fetch('/api/profiles/me', {
-          credentials: 'include'
-        });
         
-        if (!res.ok) {
-          if (res.status === 404) {
-            // No profile exists - show setup form
-            setActiveTab('setup');
-            return;
-          }
-          throw new Error('Failed to fetch profile');
+        // First check authentication
+        const authCheck = await authService.checkAuth();
+        if (!authCheck.authenticated) {
+          navigate('/login');
+          return;
         }
 
-        const data = await res.json();
-        setProfile({
-          ...defaultProfile,
-          ...data,
-          projects: Array.isArray(data.projects) ? data.projects : [],
-          stats: {
-            totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
+        // Then fetch profile
+        try {
+          const profileData = await profileService.getProfile();
+          setProfile({
+            ...defaultProfile,
+            ...profileData,
+            projects: Array.isArray(profileData.projects) ? profileData.projects : [],
+            stats: {
+              totalProjects: Array.isArray(profileData.projects) ? profileData.projects.length : 0
+            }
+          });
+        } catch (profileError) {
+          if (profileError.message.includes('Profile not found')) {
+            setActiveTab('setup');
+          } else {
+            throw profileError;
           }
-        });
-
+        }
       } catch (err) {
-        console.error('Profile fetch error:', err);
+        console.error('Initialization error:', err);
         setError(err.message);
-        setActiveTab('setup'); // Fallback to setup if there's any error
+        setActiveTab('setup');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchProfile();
-  }, []);
+    checkAuthAndFetchProfile();
+  }, [navigate]);
+
 
   const handleCreateProfile = async (username) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      // First check if username exists
-      const checkRes = await fetch(`/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
-        credentials: 'include'
-      });
+      // First check username availability
+      const checkRes = await fetch(
+        `${API_BASE_URL}/api/profiles/check-username?username=${encodeURIComponent(username)}`,
+        { credentials: 'include' }
+      );
       
-      if (!checkRes.ok) {
-        throw new Error('Failed to check username availability');
-      }
+      if (!checkRes.ok) throw new Error('Failed to check username');
       
       const checkData = await checkRes.json();
-      if (checkData.exists) {
-        throw new Error('Username already exists. Please try another one.');
-      }
+      if (checkData.exists) throw new Error('Username already exists');
       
-      // If username is available, create profile
-      const res = await fetch('/api/profiles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
-        credentials: 'include'
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to create profile');
-      }
-
-      const data = await res.json();
+      // Create profile
+      const newProfile = await profileService.createProfile(username);
       setProfile({
         ...defaultProfile,
-        ...data,
-        projects: Array.isArray(data.projects) ? data.projects : [],
+        ...newProfile,
+        projects: Array.isArray(newProfile.projects) ? newProfile.projects : [],
         stats: {
-          totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
+          totalProjects: Array.isArray(newProfile.projects) ? newProfile.projects.length : 0
         }
       });
       setActiveTab('projects');
