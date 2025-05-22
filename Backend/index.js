@@ -188,7 +188,7 @@ app.post("/register", async (req, res) => {
       verificationToken,
     });
 
-const verifyLink = `http://localhost:3000/verify-email/${verificationToken}`;
+const verifyLink = `https://myportfolify.onrender.com/verify-email/${verificationToken}`;
 await transporter.sendMail({
   from: '"MyPortfolify" <myportfolify@gmail.com>', // Use your domain email
   to: username,
