@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/check-auth", { withCredentials: true });
+      const res = await axios.get("https://myportfolify.onrender.com/check-auth", { withCredentials: true });
       if (res.data.authenticated) setUser(res.data.user);
     } catch {
       setUser(null);

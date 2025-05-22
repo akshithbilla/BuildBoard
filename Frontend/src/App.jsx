@@ -23,7 +23,7 @@ function App() {
 
   const checkAuth = useCallback(async () => {
     try {
-      const response = await axios.get("http://localhost:3000/check-auth", {
+      const response = await axios.get("https://myportfolify.onrender.com/check-auth", {
         withCredentials: true,
       });
       if (response.data.authenticated) {

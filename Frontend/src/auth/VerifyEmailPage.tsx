@@ -10,7 +10,7 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     const verify = async () => {
       try {
-        await axios.get(`http://localhost:3000/verify-email/${token}`);
+        await axios.get(`https://myportfolify.onrender.com/verify-email/${token}`);
         setMessage("✅ Email verified successfully! Redirecting to login...");
         setTimeout(() => navigate("/login"), 3000);
       } catch (err) {

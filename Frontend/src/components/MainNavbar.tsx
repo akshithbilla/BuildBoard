@@ -30,7 +30,7 @@ export const MainNavbar = ({ user, setUser }: MainNavbarProps) => {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:3000/logout', {
+      await fetch('https://myportfolify.onrender.com/logout', {
         method: 'GET',
         credentials: 'include',
       });

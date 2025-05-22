@@ -50,7 +50,7 @@ const SignupPage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/register", {
+      const response = await fetch("https://myportfolify.onrender.com/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -80,7 +80,7 @@ const SignupPage = () => {
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = "http://localhost:3000/auth/google";
+    window.location.href = "https://myportfolify.onrender.com/auth/google";
   };
 
   return (

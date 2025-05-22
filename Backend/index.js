@@ -155,7 +155,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-
 app.get('/', (req, res) => {
   res.send('Server Working!');
 });

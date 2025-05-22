@@ -25,7 +25,7 @@ const LoginPage = ({ setUser }) => {
     const password = formData.get('password');
 
     try {
-      const response = await fetch('http://localhost:3000/login', {
+      const response = await fetch('https://myportfolify.onrender.com/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -47,7 +47,7 @@ const LoginPage = ({ setUser }) => {
   };
 
   const handleGoogleAuth = () => {
-    window.location.href = 'http://localhost:3000/auth/google';
+    window.location.href = 'https://myportfolify.onrender.com/auth/google';
   };
 
   return (

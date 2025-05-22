@@ -15,7 +15,7 @@ const ResetPasswordPage = () => {
     setStatus(null);
 
     try {
-      const res = await fetch(`http://localhost:3000/reset-password/${token}`, {
+      const res = await fetch(`https://myportfolify.onrender.com/reset-password/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),

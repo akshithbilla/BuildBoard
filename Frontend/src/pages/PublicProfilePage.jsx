@@ -15,7 +15,7 @@ export default function PublicProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/api/profiles/${username}`);
+        const response = await axios.get(`https://myportfolify.onrender.com/api/profiles/${username}`);
         setProfile(response.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Profile not found');
