@@ -50,7 +50,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, sameSite: 'lax' },
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', // true in production
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  },
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -259,13 +264,16 @@ app.post("/login", (req, res, next) => {
     if (!user) return res.status(401).json({ message: info.message });
     if (!user.isVerified) return res.status(403).json({ message: "Please verify your email first" });
 
+    // Add the explicit session saving here:
     req.login(user, (err) => {
       if (err) return next(err);
-       // Track login
+      // Track login
       User.findByIdAndUpdate(user._id, { 
         $set: { lastLogin: new Date() },
         $inc: { loginCount: 1 }
       }).exec();
+      
+      // Explicitly save the session before sending response
       req.session.save(() => {
         res.status(200).json({ message: "Logged in", user });
       });
@@ -279,11 +287,15 @@ app.get("/auth/google",
 
 app.get("/auth/google/callback",
   passport.authenticate("google", {
-    successRedirect: "https://myportfolify.vercel.app/",
     failureRedirect: "https://myportfolify.vercel.app/login",
-  })
+  }),
+  (req, res) => {
+    // Explicitly save session before redirect
+    req.session.save(() => {
+      res.redirect("https://myportfolify.vercel.app/");
+    });
+  }
 );
-
 app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   const token = crypto.randomBytes(32).toString("hex");
@@ -382,6 +394,11 @@ app.get("/logout", (req, res) => {
 });
 
 app.get("/check-auth", (req, res) => {
+  console.log('Session ID:', req.sessionID);
+  console.log('Authenticated:', req.isAuthenticated());
+  console.log('User:', req.user);
+  console.log('Cookies:', req.headers.cookie);
+  
   if (req.isAuthenticated()) {
     res.status(200).json({
       authenticated: true,

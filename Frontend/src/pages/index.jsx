@@ -17,6 +17,10 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://myportfolify.onrender.com' 
+  : 'http://localhost:3000';
+
 // Default profile structure
 const defaultProfile = {
   username: '',
@@ -25,6 +29,15 @@ const defaultProfile = {
   stats: {
     totalProjects: 0
   }
+};
+
+const checkContentType = async (response) => {
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await response.text();
+    throw new Error(`Expected JSON, got: ${text.substring(0, 100)}...`);
+  }
+  return response.json();
 };
 
 export default function IndexPage() {
@@ -37,86 +50,122 @@ export default function IndexPage() {
   const [siteGenerated, setSiteGenerated] = useState(false);
   const navigate = useNavigate();
 
- useEffect(() => {
-  const checkAuthAndFetchProfile = async () => {
+  const verifySession = async () => {
     try {
-      // Step 1: Check if authenticated
-      const authRes = await fetch('/check-auth', { credentials: 'include' });
-      const authData = await authRes.json();
-
-      if (!authData.authenticated) {
-        setActiveTab('setup');
-        return;
-      }
-
-      // Step 2: Fetch profile if authenticated
-      setIsLoading(true);
-      setError(null);
-
-      const profileRes = await fetch('/api/profiles/me', {
-        credentials: 'include'
-      });
-
-      if (profileRes.status === 401) {
-        setActiveTab('setup');
-        return;
-      }
-
-      const contentType = profileRes.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await profileRes.text();
-        console.error('Expected JSON, got:', text);
-        throw new Error('Server returned unexpected response');
-      }
-
-      if (!profileRes.ok) {
-        const errorData = await profileRes.json();
-        throw new Error(errorData.message || 'Failed to fetch profile');
-      }
-
-      const data = await profileRes.json();
-      setProfile({
-        ...defaultProfile,
-        ...data,
-        projects: Array.isArray(data.projects) ? data.projects : [],
-        stats: {
-          totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
+      const res = await fetch(`${API_BASE_URL}/check-auth`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
         }
       });
-
+      return res.ok;
     } catch (err) {
-      console.error('Error during auth/profile fetch:', err);
-      setError(err.message);
-      setActiveTab('setup');
-    } finally {
-      setIsLoading(false);
+      return false;
     }
   };
 
-  checkAuthAndFetchProfile();
-}, []);
+  useEffect(() => {
+    const checkAuthAndFetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // First check authentication
+        const authRes = await fetch(`${API_BASE_URL}/check-auth`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!authRes.ok) {
+          throw new Error('Authentication check failed');
+        }
+
+        const authData = await checkContentType(authRes);
+
+        if (!authData.authenticated) {
+          setActiveTab('setup');
+          setIsLoading(false);
+          return;
+        }
+
+        // Then fetch profile
+        const profileRes = await fetch(`${API_BASE_URL}/api/profiles/me`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (profileRes.status === 401) {
+          setActiveTab('setup');
+          setIsLoading(false);
+          return;
+        }
+
+        const profileData = await checkContentType(profileRes);
+        setProfile({
+          ...defaultProfile,
+          ...profileData,
+          projects: Array.isArray(profileData.projects) ? profileData.projects : [],
+          stats: {
+            totalProjects: Array.isArray(profileData.projects) ? profileData.projects.length : 0
+          }
+        });
+
+      } catch (err) {
+        console.error('Error during auth/profile fetch:', err);
+        setError(err.message);
+        setActiveTab('setup');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthAndFetchProfile();
+
+    // Session check interval
+    const checkSession = setInterval(async () => {
+      const sessionValid = await verifySession();
+      if (!sessionValid) {
+        setError('Your session has expired. Please log in again.');
+        setActiveTab('setup');
+      }
+    }, 300000); // Check every 5 minutes
+
+    return () => clearInterval(checkSession);
+  }, []);
 
   const handleCreateProfile = async (username) => {
     try {
       setIsLoading(true);
       setError(null);
       
+      const sessionValid = await verifySession();
+      if (!sessionValid) {
+        throw new Error('Session expired. Please log in again.');
+      }
+      
       // First check if username exists
-      const checkRes = await fetch(`/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
-        credentials: 'include'
+      const checkRes = await fetch(`${API_BASE_URL}/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
       
       if (!checkRes.ok) {
         throw new Error('Failed to check username availability');
       }
       
-      const checkData = await checkRes.json();
+      const checkData = await checkContentType(checkRes);
       if (checkData.exists) {
         throw new Error('Username already exists. Please try another one.');
       }
       
       // If username is available, create profile
-      const res = await fetch('/api/profiles', {
+      const res = await fetch(`${API_BASE_URL}/api/profiles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }),
@@ -124,11 +173,11 @@ export default function IndexPage() {
       });
       
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
+        const errorData = await checkContentType(res);
         throw new Error(errorData.message || 'Failed to create profile');
       }
 
-      const data = await res.json();
+      const data = await checkContentType(res);
       setProfile({
         ...defaultProfile,
         ...data,
@@ -148,6 +197,11 @@ export default function IndexPage() {
 
   const handleGenerateSite = async () => {
     try {
+      const sessionValid = await verifySession();
+      if (!sessionValid) {
+        throw new Error('Session expired. Please log in again.');
+      }
+
       setIsGeneratingSite(true);
       setError(null);
       
@@ -157,7 +211,7 @@ export default function IndexPage() {
       setSiteGenerated(true);
     } catch (err) {
       console.error('Site generation error:', err);
-      setError('Failed to generate site. Please try again.');
+      setError(err.message);
     } finally {
       setIsGeneratingSite(false);
     }
