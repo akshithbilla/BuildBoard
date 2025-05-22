@@ -17,10 +17,6 @@ import {
   CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://myportfolify.onrender.com' 
-  : 'http://localhost:3000';
-
 // Default profile structure
 const defaultProfile = {
   username: '',
@@ -29,15 +25,6 @@ const defaultProfile = {
   stats: {
     totalProjects: 0
   }
-};
-
-const checkContentType = async (response) => {
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    const text = await response.text();
-    throw new Error(`Expected JSON, got: ${text.substring(0, 100)}...`);
-  }
-  return response.json();
 };
 
 export default function IndexPage() {
@@ -50,91 +37,44 @@ export default function IndexPage() {
   const [siteGenerated, setSiteGenerated] = useState(false);
   const navigate = useNavigate();
 
-  const verifySession = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/check-auth`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      return res.ok;
-    } catch (err) {
-      return false;
-    }
-  };
-
   useEffect(() => {
-    const checkAuthAndFetchProfile = async () => {
+    const fetchProfile = async () => {
       try {
         setIsLoading(true);
         setError(null);
-
-        // First check authentication
-        const authRes = await fetch(`${API_BASE_URL}/check-auth`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          }
+        const res = await fetch('/api/profiles/me', {
+          credentials: 'include'
         });
-
-        if (!authRes.ok) {
-          throw new Error('Authentication check failed');
-        }
-
-        const authData = await checkContentType(authRes);
-
-        if (!authData.authenticated) {
-          setActiveTab('setup');
-          setIsLoading(false);
-          return;
-        }
-
-        // Then fetch profile
-        const profileRes = await fetch(`${API_BASE_URL}/api/profiles/me`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
+        
+        if (!res.ok) {
+          if (res.status === 404) {
+            // No profile exists - show setup form
+            setActiveTab('setup');
+            return;
           }
-        });
-
-        if (profileRes.status === 401) {
-          setActiveTab('setup');
-          setIsLoading(false);
-          return;
+          throw new Error('Failed to fetch profile');
         }
 
-        const profileData = await checkContentType(profileRes);
+        const data = await res.json();
         setProfile({
           ...defaultProfile,
-          ...profileData,
-          projects: Array.isArray(profileData.projects) ? profileData.projects : [],
+          ...data,
+          projects: Array.isArray(data.projects) ? data.projects : [],
           stats: {
-            totalProjects: Array.isArray(profileData.projects) ? profileData.projects.length : 0
+            totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
           }
         });
 
       } catch (err) {
-        console.error('Error during auth/profile fetch:', err);
+        console.error('Profile fetch error:', err);
         setError(err.message);
-        setActiveTab('setup');
+        setActiveTab('setup'); // Fallback to setup if there's any error
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkAuthAndFetchProfile();
-
-    // Session check interval
-    const checkSession = setInterval(async () => {
-      const sessionValid = await verifySession();
-      if (!sessionValid) {
-        setError('Your session has expired. Please log in again.');
-        setActiveTab('setup');
-      }
-    }, 300000); // Check every 5 minutes
-
-    return () => clearInterval(checkSession);
+    fetchProfile();
   }, []);
 
   const handleCreateProfile = async (username) => {
@@ -142,30 +82,22 @@ export default function IndexPage() {
       setIsLoading(true);
       setError(null);
       
-      const sessionValid = await verifySession();
-      if (!sessionValid) {
-        throw new Error('Session expired. Please log in again.');
-      }
-      
       // First check if username exists
-      const checkRes = await fetch(`${API_BASE_URL}/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+      const checkRes = await fetch(`/api/profiles/check-username?username=${encodeURIComponent(username)}`, {
+        credentials: 'include'
       });
       
       if (!checkRes.ok) {
         throw new Error('Failed to check username availability');
       }
       
-      const checkData = await checkContentType(checkRes);
+      const checkData = await checkRes.json();
       if (checkData.exists) {
         throw new Error('Username already exists. Please try another one.');
       }
       
       // If username is available, create profile
-      const res = await fetch(`${API_BASE_URL}/api/profiles`, {
+      const res = await fetch('/api/profiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username }),
@@ -173,11 +105,11 @@ export default function IndexPage() {
       });
       
       if (!res.ok) {
-        const errorData = await checkContentType(res);
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to create profile');
       }
 
-      const data = await checkContentType(res);
+      const data = await res.json();
       setProfile({
         ...defaultProfile,
         ...data,
@@ -197,11 +129,6 @@ export default function IndexPage() {
 
   const handleGenerateSite = async () => {
     try {
-      const sessionValid = await verifySession();
-      if (!sessionValid) {
-        throw new Error('Session expired. Please log in again.');
-      }
-
       setIsGeneratingSite(true);
       setError(null);
       
@@ -211,7 +138,7 @@ export default function IndexPage() {
       setSiteGenerated(true);
     } catch (err) {
       console.error('Site generation error:', err);
-      setError(err.message);
+      setError('Failed to generate site. Please try again.');
     } finally {
       setIsGeneratingSite(false);
     }
