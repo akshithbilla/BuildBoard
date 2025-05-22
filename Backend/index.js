@@ -226,7 +226,7 @@ app.get("/verify-email/:token", async (req, res) => {
       { new: true }
     );
     if (!user) return res.status(400).send("Invalid or expired token");
-    res.redirect("http://localhost:5173/login?verified=true");
+    res.redirect("https://myportfolify.vercel.app/login?verified=true");
   } catch (err) {
     res.status(500).send("Server error");
   }
@@ -258,8 +258,8 @@ app.get("/auth/google",
 
 app.get("/auth/google/callback",
   passport.authenticate("google", {
-    successRedirect: "http://localhost:5173/",
-    failureRedirect: "http://localhost:5173/login",
+    successRedirect: "https://myportfolify.vercel.app/",
+    failureRedirect: "https://myportfolify.vercel.app/login",
   })
 );
 
@@ -276,7 +276,7 @@ app.post("/forgot-password", async (req, res) => {
     user.resetTokenExpiry = expiry;
     await user.save();
 
-    const resetLink = `http://localhost:5173/reset-password/${token}`;
+    const resetLink = `https://myportfolify.vercel.app/reset-password/${token}`;
 await transporter.sendMail({
   from: '"MyPortfolify Security" <security@myportfolify.com>', // Professional sender
   to: email,
