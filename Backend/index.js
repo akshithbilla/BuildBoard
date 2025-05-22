@@ -156,6 +156,9 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+app.get('/', (req, res) => {
+  res.send('Server Working!');
+});
 // Routes -------------------------------------------------------------------------
 
 // Authentication Routes (unchanged) ----------------------------------------------
