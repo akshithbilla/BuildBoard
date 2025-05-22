@@ -21,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware ---------------------------------------------------------------------
-app.use(cors({ origin: "https://myportfolify.vercel.app/", credentials: true }));
+app.use(cors({ origin: "https://myportfolify.vercel.app", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
