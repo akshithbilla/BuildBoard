@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 //import { link as linkStyles } from "@heroui/theme";
 //import clsx from "clsx";
-import as from "./as.png"; // logo
+import myportfolify from "./myportfolify.jpg"; // logo
 
 //import { siteConfig } from "@/config/site";
 //import { ThemeSwitch } from "@/components/theme-switch";
@@ -35,8 +35,8 @@ export const GuestNavbar = () => {
             color="foreground"
             href="/"
           >
-            <img src={as} alt="VaultX Logo" style={{ width: "24px", height: "24px" }} />
-            <p className="font-bold text-inherit">BuildBoard</p>
+            <img src={myportfolify} alt="VaultX Logo" style={{ width: "24px", height: "24px" }} />
+            <p className="font-bold text-inherit">myportfolify</p>
           </Link>
         </NavbarBrand>
         

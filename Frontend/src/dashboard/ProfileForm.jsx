@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import Modal from '../ui/Modal';
-import { UserCircleIcon } from 'lucide-react'; // Assume you have these icons
-import { Link2Icon } from 'lucide-react'; // or your preferred icon set
+import { UserCircleIcon, Link2Icon, PlusIcon, Trash2Icon, BriefcaseIcon, GraduationCapIcon } from 'lucide-react';
 
 export default function ProfileForm({ profile, onProfileUpdated }) {
   const [formData, setFormData] = useState({
     name: profile.profile.name || '',
+    passionateText: profile.profile.passionateText || '',
     bio: profile.profile.bio || '',
     avatar: profile.profile.avatar || '',
     socialLinks: {
@@ -13,14 +13,32 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
       linkedin: profile.profile.socialLinks?.linkedin || '',
       twitter: profile.profile.socialLinks?.twitter || '',
       personalWebsite: profile.profile.socialLinks?.personalWebsite || ''
-    }
+    },
+    skills: profile.profile.skills || [],
+    education: profile.profile.education || [],
+    workExperience: profile.profile.workExperience || []
   });
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(profile.profile.avatar || '');
+  const [newSkill, setNewSkill] = useState({ techName: '', skillsUsed: '' });
+  const [newEducation, setNewEducation] = useState({ 
+    collegeName: '', 
+    branch: '', 
+    course: '', 
+    yearOfPassout: '' 
+  });
+  const [newWorkExperience, setNewWorkExperience] = useState({
+    companyName: '',
+    position: '',
+    duration: '',
+    description: '',
+    currentlyWorking: false
+  });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     
     if (name.startsWith('socialLinks.')) {
       const socialField = name.split('.')[1];
@@ -37,9 +55,103 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: type === 'checkbox' ? checked : value
       }));
     }
+  };
+
+  const handleSkillChange = (e, index, field) => {
+    const { value } = e.target;
+    const updatedSkills = [...formData.skills];
+    updatedSkills[index][field] = field === 'skillsUsed' ? value.split(',') : value;
+    setFormData(prev => ({ ...prev, skills: updatedSkills }));
+  };
+
+  const handleEducationChange = (e, index, field) => {
+    const { value } = e.target;
+    const updatedEducation = [...formData.education];
+    updatedEducation[index][field] = value;
+    setFormData(prev => ({ ...prev, education: updatedEducation }));
+  };
+
+  const handleWorkExperienceChange = (e, index, field) => {
+    const { value, type, checked } = e.target;
+    const updatedWorkExperience = [...formData.workExperience];
+    updatedWorkExperience[index][field] = type === 'checkbox' ? checked : value;
+    setFormData(prev => ({ ...prev, workExperience: updatedWorkExperience }));
+  };
+
+  const addSkill = () => {
+    if (newSkill.techName.trim() === '') return;
+    
+    const skillsUsedArray = newSkill.skillsUsed.split(',').map(skill => skill.trim());
+    
+    setFormData(prev => ({
+      ...prev,
+      skills: [...prev.skills, {
+        techName: newSkill.techName,
+        skillsUsed: skillsUsedArray
+      }]
+    }));
+    
+    setNewSkill({ techName: '', skillsUsed: '' });
+  };
+
+  const removeSkill = (index) => {
+    const updatedSkills = [...formData.skills];
+    updatedSkills.splice(index, 1);
+    setFormData(prev => ({ ...prev, skills: updatedSkills }));
+  };
+
+  const addEducation = () => {
+    if (newEducation.collegeName.trim() === '') return;
+    
+    setFormData(prev => ({
+      ...prev,
+      education: [...prev.education, {
+        collegeName: newEducation.collegeName,
+        branch: newEducation.branch,
+        course: newEducation.course,
+        yearOfPassout: newEducation.yearOfPassout
+      }]
+    }));
+    
+    setNewEducation({ collegeName: '', branch: '', course: '', yearOfPassout: '' });
+  };
+
+  const removeEducation = (index) => {
+    const updatedEducation = [...formData.education];
+    updatedEducation.splice(index, 1);
+    setFormData(prev => ({ ...prev, education: updatedEducation }));
+  };
+
+  const addWorkExperience = () => {
+    if (newWorkExperience.companyName.trim() === '') return;
+    
+    setFormData(prev => ({
+      ...prev,
+      workExperience: [...prev.workExperience, {
+        companyName: newWorkExperience.companyName,
+        position: newWorkExperience.position,
+        duration: newWorkExperience.duration,
+        description: newWorkExperience.description,
+        currentlyWorking: newWorkExperience.currentlyWorking
+      }]
+    }));
+    
+    setNewWorkExperience({
+      companyName: '',
+      position: '',
+      duration: '',
+      description: '',
+      currentlyWorking: false
+    });
+  };
+
+  const removeWorkExperience = (index) => {
+    const updatedWorkExperience = [...formData.workExperience];
+    updatedWorkExperience.splice(index, 1);
+    setFormData(prev => ({ ...prev, workExperience: updatedWorkExperience }));
   };
 
   const handleSubmit = async (e) => {
@@ -47,21 +159,24 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
     setIsSubmitting(true);
     
     try {
-      const res = await fetch('/api/profiles/me', {
+      const res = await fetch('/api/profiles/me/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile: formData }),
         credentials: 'include'
       });
-      const data = await res.json();
       
-      if (res.ok) {
-        onProfileUpdated(data);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+      if (!res.ok) {
+        throw new Error('Failed to update profile');
       }
+      
+      const data = await res.json();
+      onProfileUpdated(data);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
-      console.error(err);
+      console.error("Profile update error:", err);
+      // Add error handling UI here
     } finally {
       setIsSubmitting(false);
     }
@@ -78,7 +193,7 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
       </div>
 
       <form onSubmit={handleSubmit} className="p-6">
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Avatar & Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
@@ -133,7 +248,19 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Passionate About</label>
+                <input
+                  type="text"
+                  name="passionateText"
+                  value={formData.passionateText}
+                  onChange={handleChange}
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder="e.g. Building scalable web applications"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Headline</label>
                 <textarea
                   name="bio"
                   value={formData.bio}
@@ -149,7 +276,7 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
           {/* Social Links */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
             <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
-              <Link2Icon  className="h-5 w-5 mr-2" />
+              <Link2Icon className="h-5 w-5 mr-2" />
               Social Connections
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -206,7 +333,7 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
 
               <div className="bg-white p-4 rounded-lg border border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
-                  <Link2Icon  className="h-5 w-5 mr-2 text-purple-600" />
+                  <Link2Icon className="h-5 w-5 mr-2 text-purple-600" />
                   Personal Website
                 </label>
                 <input
@@ -217,6 +344,343 @@ export default function ProfileForm({ profile, onProfileUpdated }) {
                   className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   placeholder="https://"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Skills Section */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
+            <h3 className="text-lg font-semibold text-indigo-800 mb-4">Skills</h3>
+            <div className="space-y-4">
+              {formData.skills.map((skill, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium">{skill.techName}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeSkill(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2Icon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Technology</label>
+                      <input
+                        type="text"
+                        value={skill.techName}
+                        onChange={(e) => handleSkillChange(e, index, 'techName')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Skills Used (comma separated)</label>
+                      <input
+                        type="text"
+                        value={skill.skillsUsed.join(', ')}
+                        onChange={(e) => handleSkillChange(e, index, 'skillsUsed')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h4 className="font-medium mb-3">Add New Skill</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Technology</label>
+                    <input
+                      type="text"
+                      value={newSkill.techName}
+                      onChange={(e) => setNewSkill({...newSkill, techName: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. Full-Stack Development"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Skills Used (comma separated)</label>
+                    <input
+                      type="text"
+                      value={newSkill.skillsUsed}
+                      onChange={(e) => setNewSkill({...newSkill, skillsUsed: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. React,Tailwind css,Node Js,Express Js,MongoDB"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={addSkill}
+                  className="flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Skill
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Education Section */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
+            <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
+              <GraduationCapIcon className="h-5 w-5 mr-2" />
+              Education
+            </h3>
+            <div className="space-y-4">
+              {formData.education.map((edu, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium">{edu.collegeName}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeEducation(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2Icon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">College Name</label>
+                      <input
+                        type="text"
+                        value={edu.collegeName}
+                        onChange={(e) => handleEducationChange(e, index, 'collegeName')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Degree</label>
+                      <input
+                        type="text"
+                        value={edu.branch}
+                        onChange={(e) => handleEducationChange(e, index, 'branch')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. B.Tech"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                      <input
+                        type="text"
+                        value={edu.course}
+                        onChange={(e) => handleEducationChange(e, index, 'course')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. Computer Science"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Year of Passout</label>
+                      <input
+                        type="number"
+                        value={edu.yearOfPassout}
+                        onChange={(e) => handleEducationChange(e, index, 'yearOfPassout')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. 2023"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h4 className="font-medium mb-3">Add New Education</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">College Name</label>
+                    <input
+                      type="text"
+                      value={newEducation.collegeName}
+                      onChange={(e) => setNewEducation({...newEducation, collegeName: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. XYZ University"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Degree</label>
+                    <input
+                      type="text"
+                      value={newEducation.branch}
+                      onChange={(e) => setNewEducation({...newEducation, branch: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. B.Tech"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
+                    <input
+                      type="text"
+                      value={newEducation.course}
+                      onChange={(e) => setNewEducation({...newEducation, course: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. Computer Science"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year of Passout</label>
+                    <input
+                      type="number"
+                      value={newEducation.yearOfPassout}
+                      onChange={(e) => setNewEducation({...newEducation, yearOfPassout: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. 2023"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={addEducation}
+                  className="flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Education
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Work Experience Section */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-xl">
+            <h3 className="text-lg font-semibold text-indigo-800 mb-4 flex items-center">
+              <BriefcaseIcon className="h-5 w-5 mr-2" />
+              Work Experience
+            </h3>
+            <div className="space-y-4">
+              {formData.workExperience.map((work, index) => (
+                <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-medium">{work.companyName}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeWorkExperience(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2Icon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                      <input
+                        type="text"
+                        value={work.companyName}
+                        onChange={(e) => handleWorkExperienceChange(e, index, 'companyName')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                      <input
+                        type="text"
+                        value={work.position}
+                        onChange={(e) => handleWorkExperienceChange(e, index, 'position')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. Software Engineer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                      <input
+                        type="text"
+                        value={work.duration}
+                        onChange={(e) => handleWorkExperienceChange(e, index, 'duration')}
+                        className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="e.g. Jan 2020 - Present"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={work.description}
+                      onChange={(e) => handleWorkExperienceChange(e, index, 'description')}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      rows="3"
+                      placeholder="Describe your role and responsibilities..."
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`currentlyWorking-${index}`}
+                      checked={work.currentlyWorking}
+                      onChange={(e) => handleWorkExperienceChange(e, index, 'currentlyWorking')}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor={`currentlyWorking-${index}`} className="ml-2 block text-sm text-gray-700">
+                      Currently working here
+                    </label>
+                  </div>
+                </div>
+              ))}
+
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h4 className="font-medium mb-3">Add New Work Experience</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={newWorkExperience.companyName}
+                      onChange={(e) => setNewWorkExperience({...newWorkExperience, companyName: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. Google"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                    <input
+                      type="text"
+                      value={newWorkExperience.position}
+                      onChange={(e) => setNewWorkExperience({...newWorkExperience, position: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. Software Engineer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                    <input
+                      type="text"
+                      value={newWorkExperience.duration}
+                      onChange={(e) => setNewWorkExperience({...newWorkExperience, duration: e.target.value})}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="e.g. Jan 2020 - Present"
+                    />
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={newWorkExperience.description}
+                    onChange={(e) => setNewWorkExperience({...newWorkExperience, description: e.target.value})}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    rows="3"
+                    placeholder="Describe your role and responsibilities..."
+                  />
+                </div>
+                <div className="flex items-center mb-3">
+                  <input
+                    type="checkbox"
+                    id="currentlyWorkingNew"
+                    checked={newWorkExperience.currentlyWorking}
+                    onChange={(e) => setNewWorkExperience({...newWorkExperience, currentlyWorking: e.target.checked})}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="currentlyWorkingNew" className="ml-2 block text-sm text-gray-700">
+                    Currently working here
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={addWorkExperience}
+                  className="flex items-center px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Work Experience
+                </button>
               </div>
             </div>
           </div>

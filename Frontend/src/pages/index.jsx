@@ -12,8 +12,9 @@ import {
   UserCircleIcon,
   Squares2X2Icon,
   SparklesIcon,
-  ChartBarIcon,
-  CogIcon
+  LinkIcon,
+  CogIcon,
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 // Default profile structure
@@ -22,8 +23,7 @@ const defaultProfile = {
   projects: [],
   template: 'default',
   stats: {
-    totalProjects: 0,
-    activeProjects: 0
+    totalProjects: 0
   }
 };
 
@@ -32,6 +32,9 @@ export default function IndexPage() {
   const [activeTab, setActiveTab] = useState('projects');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [isGeneratingSite, setIsGeneratingSite] = useState(false);
+  const [siteGenerated, setSiteGenerated] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,8 +61,7 @@ export default function IndexPage() {
           ...data,
           projects: Array.isArray(data.projects) ? data.projects : [],
           stats: {
-            totalProjects: Array.isArray(data.projects) ? data.projects.length : 0,
-            activeProjects: Array.isArray(data.projects) ? data.projects.filter(p => p?.status === 'active').length : 0
+            totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
           }
         });
 
@@ -113,8 +115,7 @@ export default function IndexPage() {
         ...data,
         projects: Array.isArray(data.projects) ? data.projects : [],
         stats: {
-          totalProjects: Array.isArray(data.projects) ? data.projects.length : 0,
-          activeProjects: Array.isArray(data.projects) ? data.projects.filter(p => p?.status === 'active').length : 0
+          totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
         }
       });
       setActiveTab('projects');
@@ -123,6 +124,23 @@ export default function IndexPage() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSite = async () => {
+    try {
+      setIsGeneratingSite(true);
+      setError(null);
+      
+      // Simulate site generation (replace with actual API call)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      setSiteGenerated(true);
+    } catch (err) {
+      console.error('Site generation error:', err);
+      setError('Failed to generate site. Please try again.');
+    } finally {
+      setIsGeneratingSite(false);
     }
   };
 
@@ -202,8 +220,21 @@ export default function IndexPage() {
                 title="Only letters and numbers are allowed"
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="username"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
               />
               <p className="mt-1 text-xs text-gray-500">3-20 characters, letters and numbers only</p>
+              
+              {/* Live URL preview */}
+              {usernameInput && (
+                <div className="mt-2 flex items-center text-sm text-gray-600">
+                  <LinkIcon className="h-4 w-4 mr-1" />
+                  <span>Your site will be: </span>
+                  <span className="ml-1 font-medium text-blue-600">
+                    {window.location.origin}/{usernameInput}
+                  </span>
+                </div>
+              )}
             </div>
             <button
               type="submit"
@@ -238,6 +269,69 @@ export default function IndexPage() {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
             <div className="mb-4 md:mb-0">
+              {/* Steps Guide */}
+              <div className="mb-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <h3 className="text-sm font-medium text-gray-500 mb-3">HOW TO CREATE YOUR SITE</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className={`flex items-start ${activeTab === 'projects' ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <div className={`flex-shrink-0 h-5 w-5 mr-2 ${activeTab === 'projects' ? 'text-blue-500' : 'text-gray-400'}`}>
+                      {profile.projects?.length > 0 ? (
+                        <CheckCircleIcon className="h-5 w-5" />
+                      ) : (
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-current">
+                          <span className="text-xs">1</span>
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Add Projects</p>
+                      <p className="text-xs text-gray-500">Fill your portfolio content</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-start ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <div className={`flex-shrink-0 h-5 w-5 mr-2 ${activeTab === 'profile' ? 'text-blue-500' : 'text-gray-400'}`}>
+                      {profile.username ? (
+                        <CheckCircleIcon className="h-5 w-5" />
+                      ) : (
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-current">
+                          <span className="text-xs">2</span>
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Profile Info</p>
+                      <p className="text-xs text-gray-500">Add your personal details</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-start ${activeTab === 'template' ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <div className={`flex-shrink-0 h-5 w-5 mr-2 ${activeTab === 'template' ? 'text-blue-500' : 'text-gray-400'}`}>
+                      {profile.template ? (
+                        <CheckCircleIcon className="h-5 w-5" />
+                      ) : (
+                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-current">
+                          <span className="text-xs">3</span>
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Choose Template</p>
+                      <p className="text-xs text-gray-500">Select your preferred design</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start text-gray-600">
+                    <div className="flex-shrink-0 h-5 w-5 mr-2 text-gray-400">
+                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full border-2 border-current">
+                        <span className="text-xs">4</span>
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">View Your Site</p>
+                      <p className="text-xs text-gray-500">Publish and share your portfolio</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <h2 className="text-lg font-semibold text-gray-600">Dashboard</h2>
               <div className="flex items-center mt-1">
                 <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
@@ -247,11 +341,29 @@ export default function IndexPage() {
               </div>
             </div>
             <button
-              onClick={() => window.open(`/${profile.username}`, '_blank')}
-              className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+              onClick={siteGenerated ? () => window.open(`/${profile.username}`, '_blank') : handleGenerateSite}
+              disabled={isGeneratingSite}
+              className="inline-flex items-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-70"
             >
-              <ArrowTopRightOnSquareIcon className="h-5 w-5 mr-2" />
-              View My Site
+              {isGeneratingSite ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Generating...
+                </>
+              ) : siteGenerated ? (
+                <>
+                  <ArrowTopRightOnSquareIcon className="h-5 w-5 mr-2" />
+                  View My Site
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="h-5 w-5 mr-2" />
+                  Generate My Site
+                </>
+              )}
             </button>
           </div>
 
@@ -273,12 +385,12 @@ export default function IndexPage() {
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-purple-50 text-purple-600 mr-4">
-                  <ChartBarIcon className="h-6 w-6" />
+                  <UserCircleIcon className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Active</p>
+                  <p className="text-sm font-medium text-gray-500">Profile Name</p>
                   <p className="text-2xl font-semibold text-gray-900">
-                    {profile.projects?.filter(p => p?.status === 'active').length || 0}
+                    {profile.username}
                   </p>
                 </div>
               </div>
@@ -341,10 +453,7 @@ export default function IndexPage() {
                           ...prev,
                           projects: [...(prev.projects || []), newProject],
                           stats: {
-                            totalProjects: (prev.projects?.length || 0) + 1,
-                            activeProjects: newProject.status === 'active' 
-                              ? (prev.stats.activeProjects || 0) + 1 
-                              : (prev.stats.activeProjects || 0)
+                            totalProjects: (prev.projects?.length || 0) + 1
                           }
                         }));
                       }}
@@ -375,28 +484,15 @@ export default function IndexPage() {
                           ...prev,
                           projects: (prev.projects || []).map(p => 
                             p._id === updatedProject._id ? updatedProject : p
-                          ),
-                          stats: {
-                            totalProjects: prev.projects?.length || 0,
-                            activeProjects: (prev.projects || []).reduce((count, p) => {
-                              if (p._id === updatedProject._id) {
-                                return updatedProject.status === 'active' ? count + 1 : count - 1;
-                              }
-                              return p.status === 'active' ? count + 1 : count;
-                            }, 0)
-                          }
+                          )
                         }));
                       }}
                       onProjectDeleted={(projectId) => {
-                        const deletedProject = (profile.projects || []).find(p => p._id === projectId);
                         setProfile(prev => ({
                           ...prev,
                           projects: (prev.projects || []).filter(p => p._id !== projectId),
                           stats: {
-                            totalProjects: (prev.projects?.length || 0) - 1,
-                            activeProjects: deletedProject?.status === 'active' 
-                              ? (prev.stats.activeProjects || 0) - 1 
-                              : (prev.stats.activeProjects || 0)
+                            totalProjects: (prev.projects?.length || 0) - 1
                           }
                         }));
                       }}
