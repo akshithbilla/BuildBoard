@@ -1,6 +1,6 @@
 const API_BASE_URL = "https://myportfolify.onrender.com";
 
-// Helper function to handle API requests
+// Enhanced API request handler with better error handling
 async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, retries = 1) {
   const config = {
     method,
@@ -11,6 +11,12 @@ async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, r
     }
   };
 
+  // Add auth token if available
+  const authToken = localStorage.getItem('authToken');
+  if (authToken) {
+    config.headers.Authorization = `Bearer ${authToken}`;
+  }
+
   if (body) {
     config.body = JSON.stringify(body);
   }
@@ -18,30 +24,38 @@ async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, r
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType && contentType.includes('application/json');
+    // Check content type before parsing
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
     
     if (!response.ok) {
-      // Handle 401 specifically to trigger reauthentication
+      // Handle specific status codes
       if (response.status === 401) {
-        // Clear any invalid auth state
         localStorage.removeItem('authToken');
         throw new Error('Session expired. Please login again.');
       }
       
-      // Try to get error message from response
-      const errorData = isJson ? await response.json() : { 
-        message: await response.text() || `Request failed with status ${response.status}`
-      };
-      throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      // Try to extract error message
+      let errorMessage = `Request failed with status ${response.status}`;
+      try {
+        const errorData = isJson ? await response.json() : await response.text();
+        errorMessage = errorData.message || errorData || errorMessage;
+      } catch (e) {
+        console.error('Error parsing error response:', e);
+      }
+      throw new Error(errorMessage);
     }
 
-    // Verify we have JSON before parsing
+    // Handle empty responses
+    if (response.status === 204) {
+      return null;
+    }
+
+    // Validate JSON response
     if (!isJson) {
       const text = await response.text();
       if (text.startsWith('<!DOCTYPE html>')) {
-        throw new Error('Received HTML response instead of JSON');
+        throw new Error('Server returned HTML instead of JSON');
       }
       throw new Error('Invalid response format from server');
     }
@@ -50,11 +64,12 @@ async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, r
   } catch (error) {
     console.error(`API request to ${endpoint} failed:`, error);
     
-    // Retry logic for certain errors
+    // Retry for network errors
     if (retries > 0 && 
         (error.message.includes('Network Error') || 
          error.message.includes('Failed to fetch'))) {
       console.log(`Retrying request to ${endpoint}...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Add delay before retry
       return apiRequest(endpoint, method, body, headers, retries - 1);
     }
     
@@ -62,11 +77,11 @@ async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, r
   }
 }
 
-// Auth-related functions
+// Auth Service
 export const authService = {
   async checkAuth() {
     try {
-      const data = await apiRequest('/check-auth');
+      const data = await apiRequest('/api/auth/check');
       return { authenticated: true, user: data.user };
     } catch (error) {
       return { 
@@ -78,8 +93,7 @@ export const authService = {
   },
 
   async login(email, password) {
-    const data = await apiRequest('/login', 'POST', { username: email, password });
-    // Store token if your backend uses JWT
+    const data = await apiRequest('/api/auth/login', 'POST', { email, password });
     if (data.token) {
       localStorage.setItem('authToken', data.token);
     }
@@ -88,15 +102,15 @@ export const authService = {
 
   async logout() {
     localStorage.removeItem('authToken');
-    return apiRequest('/logout', 'POST');
+    return apiRequest('/api/auth/logout', 'POST');
   },
 
-  async register(email, password) {
-    return apiRequest('/register', 'POST', { username: email, password });
+  async register(email, password, username) {
+    return apiRequest('/api/auth/register', 'POST', { email, password, username });
   }
 };
 
-// Profile-related functions
+// Profile Service
 export const profileService = {
   async getProfile() {
     return apiRequest('/api/profiles/me');
@@ -106,8 +120,8 @@ export const profileService = {
     return apiRequest(`/api/profiles/check-username?username=${encodeURIComponent(username)}`);
   },
 
-  async createProfile(username) {
-    return apiRequest('/api/profiles', 'POST', { username });
+  async createProfile(profileData) {
+    return apiRequest('/api/profiles', 'POST', profileData);
   },
 
   async updateProfile(profileData) {
@@ -115,30 +129,34 @@ export const profileService = {
   },
 
   async updateTemplate(template) {
-    return apiRequest('/api/profiles/me/template', 'PUT', { template });
+    return apiRequest('/api/profiles/me/template', 'PATCH', { template });
+  },
+
+  async generateSite() {
+    return apiRequest('/api/profiles/me/generate', 'POST');
   }
 };
 
-// Project-related functions
+// Project Service
 export const projectService = {
   async getProjects() {
-    const data = await apiRequest('/api/profiles/me/projects');
-    return data.projects || [];
+    const data = await apiRequest('/api/projects');
+    return Array.isArray(data) ? data : [];
   },
 
   async getProject(projectId) {
-    return apiRequest(`/api/profiles/me/projects/${projectId}`);
+    return apiRequest(`/api/projects/${projectId}`);
   },
 
-  async addProject(projectData) {
-    return apiRequest('/api/profiles/me/projects', 'POST', projectData);
+  async createProject(projectData) {
+    return apiRequest('/api/projects', 'POST', projectData);
   },
 
   async updateProject(projectId, projectData) {
-    return apiRequest(`/api/profiles/me/projects/${projectId}`, 'PUT', projectData);
+    return apiRequest(`/api/projects/${projectId}`, 'PUT', projectData);
   },
 
   async deleteProject(projectId) {
-    return apiRequest(`/api/profiles/me/projects/${projectId}`, 'DELETE');
+    return apiRequest(`/api/projects/${projectId}`, 'DELETE');
   }
 };
