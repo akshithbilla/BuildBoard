@@ -37,45 +37,64 @@ export default function IndexPage() {
   const [siteGenerated, setSiteGenerated] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const res = await fetch('/api/profiles/me', {
-          credentials: 'include'
-        });
-        
-        if (!res.ok) {
-          if (res.status === 404) {
-            // No profile exists - show setup form
-            setActiveTab('setup');
-            return;
-          }
-          throw new Error('Failed to fetch profile');
-        }
+ useEffect(() => {
+  const checkAuthAndFetchProfile = async () => {
+    try {
+      // Step 1: Check if authenticated
+      const authRes = await fetch('/check-auth', { credentials: 'include' });
+      const authData = await authRes.json();
 
-        const data = await res.json();
-        setProfile({
-          ...defaultProfile,
-          ...data,
-          projects: Array.isArray(data.projects) ? data.projects : [],
-          stats: {
-            totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
-          }
-        });
-
-      } catch (err) {
-        console.error('Profile fetch error:', err);
-        setError(err.message);
-        setActiveTab('setup'); // Fallback to setup if there's any error
-      } finally {
-        setIsLoading(false);
+      if (!authData.authenticated) {
+        setActiveTab('setup');
+        return;
       }
-    };
 
-    fetchProfile();
-  }, []);
+      // Step 2: Fetch profile if authenticated
+      setIsLoading(true);
+      setError(null);
+
+      const profileRes = await fetch('/api/profiles/me', {
+        credentials: 'include'
+      });
+
+      if (profileRes.status === 401) {
+        setActiveTab('setup');
+        return;
+      }
+
+      const contentType = profileRes.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await profileRes.text();
+        console.error('Expected JSON, got:', text);
+        throw new Error('Server returned unexpected response');
+      }
+
+      if (!profileRes.ok) {
+        const errorData = await profileRes.json();
+        throw new Error(errorData.message || 'Failed to fetch profile');
+      }
+
+      const data = await profileRes.json();
+      setProfile({
+        ...defaultProfile,
+        ...data,
+        projects: Array.isArray(data.projects) ? data.projects : [],
+        stats: {
+          totalProjects: Array.isArray(data.projects) ? data.projects.length : 0
+        }
+      });
+
+    } catch (err) {
+      console.error('Error during auth/profile fetch:', err);
+      setError(err.message);
+      setActiveTab('setup');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  checkAuthAndFetchProfile();
+}, []);
 
   const handleCreateProfile = async (username) => {
     try {

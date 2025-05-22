@@ -450,7 +450,12 @@ app.post('/api/profiles', async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    time: new Date().toISOString()
+  });
+});
 // Get current user's profile
 app.get('/api/profiles/me', async (req, res) => {
   if (!req.isAuthenticated()) {
