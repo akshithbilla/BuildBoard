@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService, profileService, projectService } from '@/services/api';
+import { authService, profileService, projectService } from './api';
 import DefaultLayout from "@/layouts/default";
 import ProjectForm from '../dashboard/ProjectForm';
 import ProjectList from '../dashboard/ProjectList';
