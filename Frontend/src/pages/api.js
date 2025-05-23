@@ -77,11 +77,11 @@ async function apiRequest(endpoint, method = 'GET', body = null, headers = {}, r
   }
 }
 
-// Auth Service
+// ✅ UPDATED Auth Service
 export const authService = {
   async checkAuth() {
     try {
-      const data = await apiRequest('/api/auth/check');
+      const data = await apiRequest('/check-auth'); // ← updated to match backend
       return { authenticated: true, user: data.user };
     } catch (error) {
       return { 
