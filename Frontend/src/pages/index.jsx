@@ -51,7 +51,7 @@ export default function IndexPage() {
         // Check authentication
         const { authenticated, requiresLogin } = await authService.checkAuth();
         if (!authenticated) {
-          navigate(requiresLogin ? '/login' : '/welcome');
+          navigate(requiresLogin ? '/login' : '/');
           return;
         }
 
