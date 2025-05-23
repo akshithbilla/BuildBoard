@@ -22,24 +22,18 @@ const __dirname = path.dirname(__filename);
 
 // Middleware ---------------------------------------------------------------------
 // Allow both production and development origins
-const allowedOrigins = [
-  'https://myportfolify.vercel.app',
-  'http://localhost:3000' // Add your frontend dev URL
-];
+
+const allowedOrigins = ['https://myportfolify-bzq9.vercel.app'];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,
-  exposedHeaders: ['set-cookie'] // Important for cross-origin cookies
+  credentials: true, // If using cookies or HTTP authentication
 }));
 
 app.use(express.json());
